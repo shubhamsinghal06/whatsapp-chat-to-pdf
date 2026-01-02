@@ -380,7 +380,11 @@
                 <input type="file" id="fileInput" accept=".zip">
             </div>
 
-            <button class="btn" id="generateBtn" disabled>Generate PDF</button>
+            <button class="btn" id="generateBtn" disabled>Generate PDF (Image-based)</button>
+            
+            <p style="text-align: center; margin-top: 15px; color: #666; font-size: 13px;">
+                ℹ️ PDF contains high-quality screenshots of your chat. Text is not searchable.
+            </p>
 
             <div class="status" id="status"></div>
 
@@ -725,12 +729,38 @@
                 const pageHeight = pdfHeight - (margin * 2);
                 let heightLeft = imgHeight;
                 let position = margin;
+                let pageNumber = 0;
                 
-                // Add first page
+                // Add first page with image
                 pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+                
+                // Add invisible text layer for searchability
+                pdf.setTextColor(255, 255, 255, 0); // Transparent white
+                pdf.setFontSize(8);
+                let yPos = margin + 15;
+                const lineHeight = 5;
+                
+                chatData.messages.forEach((msg, index) => {
+                    if (yPos > pdfHeight - margin) {
+                        // Move to next page
+                        if (heightLeft > 0) {
+                            pdf.addPage();
+                            position = heightLeft - imgHeight + margin;
+                            pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+                            heightLeft -= pageHeight;
+                        }
+                        yPos = margin + 15;
+                    }
+                    
+                    // Add searchable text (invisible)
+                    const text = `${msg.sender}: ${msg.text}`;
+                    pdf.text(text, margin, yPos, { maxWidth: contentWidth });
+                    yPos += lineHeight;
+                });
+                
                 heightLeft -= pageHeight;
                 
-                // Add additional pages if content is longer
+                // Add remaining pages (just images, text already added)
                 while (heightLeft > 0) {
                     position = heightLeft - imgHeight + margin;
                     pdf.addPage();
