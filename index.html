@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Chat to PDF</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dom-to-image@2.6.0/dist/dom-to-image.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
@@ -681,39 +681,23 @@
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
                 console.log('Capturing chatPreview with dimensions:', chatPreview.offsetWidth, 'x', chatPreview.offsetHeight);
-                console.log('ChatPreview element:', chatPreview);
-                console.log('ChatPreview HTML length:', chatPreview.innerHTML.length);
-                console.log('ChatPreview background:', window.getComputedStyle(chatPreview).backgroundColor);
                 
-                // Capture the chat preview
-                const canvas = await html2canvas(chatPreview, {
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    backgroundColor: '#e5ddd5',
-                    logging: true
+                // Use dom-to-image instead of html2canvas
+                const dataUrl = await domtoimage.toJpeg(chatPreview, {
+                    quality: 0.95,
+                    bgcolor: '#e5ddd5',
+                    width: chatPreview.offsetWidth,
+                    height: chatPreview.offsetHeight
                 });
                 
-                console.log('Canvas created:', canvas.width, 'x', canvas.height);
-                console.log('Canvas element:', canvas);
-                
-                // Check if canvas has any content by looking at pixel data
-                const ctx = canvas.getContext('2d');
-                const imageData = ctx.getImageData(0, 0, Math.min(100, canvas.width), Math.min(100, canvas.height));
-                const hasContent = imageData.data.some((pixel, i) => i % 4 === 3 && pixel !== 0); // Check alpha channel
-                console.log('Canvas has content?', hasContent);
-                console.log('First 100 pixels sample:', imageData.data.slice(0, 100));
+                console.log('Image created, data length:', dataUrl.length);
+                console.log('Image data starts with:', dataUrl.substring(0, 50));
                 
                 loadingText.textContent = 'Creating PDF...';
                 
                 // Convert canvas to image
-                const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                console.log('Image data length:', imgData.length);
-                console.log('Image data starts with:', imgData.substring(0, 100));
-                
-                // DEBUG: Open the image in a new tab to see if it has content
-                // Uncomment this line to debug:
-                // window.open(imgData);
+                const imgData = dataUrl;
+                console.log('Using image data for PDF');
                 
                 // Create PDF with jsPDF
                 const { jsPDF } = window.jspdf;
@@ -731,9 +715,11 @@
                 const margin = 10;
                 const contentWidth = pdfWidth - (margin * 2);
                 
-                // Calculate image dimensions to fit in PDF
+                // Calculate image dimensions - use chatPreview dimensions
                 const imgWidth = contentWidth;
-                const imgHeight = (canvas.height * contentWidth) / canvas.width;
+                const imgHeight = (chatPreview.offsetHeight * contentWidth) / chatPreview.offsetWidth;
+                
+                console.log('Image dimensions for PDF:', imgWidth, 'x', imgHeight, 'mm');
                 
                 // Calculate how many pages we need
                 const pageHeight = pdfHeight - (margin * 2);
