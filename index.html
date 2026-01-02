@@ -283,7 +283,15 @@
 
         /* PDF specific styles */
         .pdf-content {
-            display: none;
+            position: fixed;
+            left: -9999px;
+            top: 0;
+            width: 800px;
+            visibility: hidden;
+        }
+
+        .pdf-content.generating {
+            visibility: visible;
         }
 
         .pdf-chat-container {
@@ -630,6 +638,7 @@
             try {
                 const pdfContent = document.getElementById('pdfContent');
                 pdfContent.innerHTML = '';
+                pdfContent.classList.add('generating');
 
                 loadingText.textContent = `Formatting ${chatData.messages.length} messages...`;
 
@@ -648,6 +657,9 @@
                 // Get unique senders
                 const senders = [...new Set(chatData.messages.map(m => m.sender))];
                 const currentUser = senders[0];
+
+                // Append container to DOM first (important for html2pdf)
+                pdfContent.appendChild(chatContainer);
 
                 // Process messages in batches to avoid blocking UI
                 const BATCH_SIZE = 50;
@@ -674,8 +686,6 @@
                     // Small delay to keep UI responsive
                     await new Promise(resolve => setTimeout(resolve, 10));
                 }
-
-                pdfContent.appendChild(chatContainer);
 
                 // Generate PDF
                 loadingText.textContent = 'Converting to PDF... Please wait...';
@@ -708,6 +718,10 @@
             } catch (error) {
                 showStatus(`Error generating PDF: ${error.message}`, 'error');
             } finally {
+                // Clean up
+                const pdfContent = document.getElementById('pdfContent');
+                pdfContent.classList.remove('generating');
+                
                 loading.style.display = 'none';
                 generateBtn.disabled = false;
                 generateBtn.classList.remove('loading');
