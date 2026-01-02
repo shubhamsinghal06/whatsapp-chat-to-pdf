@@ -1,0 +1,46 @@
+# Compiled files
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.chrome-profile/
+
+# Node modules (if ever added)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test files
+test-chats/
+*.zip
+*.pdf
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Build artifacts (if any)
+dist/
+build/

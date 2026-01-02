@@ -1,0 +1,22 @@
+{
+  "name": "chat-flow",
+  "version": "1.0.0",
+  "description": "WhatsApp Chat to PDF Converter - Convert your WhatsApp exports into beautiful PDFs",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 server.py",
+    "serve": "python3 -m http.server 8080",
+    "open": "open index.html",
+    "dev": "python3 server.py"
+  },
+  "keywords": [
+    "whatsapp",
+    "chat",
+    "pdf",
+    "converter",
+    "export"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
