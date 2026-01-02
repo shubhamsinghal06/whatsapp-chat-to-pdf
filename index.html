@@ -681,6 +681,9 @@
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
                 console.log('Capturing chatPreview with dimensions:', chatPreview.offsetWidth, 'x', chatPreview.offsetHeight);
+                console.log('ChatPreview element:', chatPreview);
+                console.log('ChatPreview HTML length:', chatPreview.innerHTML.length);
+                console.log('ChatPreview background:', window.getComputedStyle(chatPreview).backgroundColor);
                 
                 // Capture the chat preview
                 const canvas = await html2canvas(chatPreview, {
@@ -688,14 +691,29 @@
                     useCORS: true,
                     allowTaint: true,
                     backgroundColor: '#e5ddd5',
-                    logging: false
+                    logging: true
                 });
                 
                 console.log('Canvas created:', canvas.width, 'x', canvas.height);
+                console.log('Canvas element:', canvas);
+                
+                // Check if canvas has any content by looking at pixel data
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(0, 0, Math.min(100, canvas.width), Math.min(100, canvas.height));
+                const hasContent = imageData.data.some((pixel, i) => i % 4 === 3 && pixel !== 0); // Check alpha channel
+                console.log('Canvas has content?', hasContent);
+                console.log('First 100 pixels sample:', imageData.data.slice(0, 100));
+                
                 loadingText.textContent = 'Creating PDF...';
                 
                 // Convert canvas to image
                 const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                console.log('Image data length:', imgData.length);
+                console.log('Image data starts with:', imgData.substring(0, 100));
+                
+                // DEBUG: Open the image in a new tab to see if it has content
+                // Uncomment this line to debug:
+                // window.open(imgData);
                 
                 // Create PDF with jsPDF
                 const { jsPDF } = window.jspdf;
@@ -704,6 +722,8 @@
                     unit: 'mm',
                     format: 'a4'
                 });
+                
+                console.log('PDF created, adding image...');
                 
                 // A4 dimensions in mm
                 const pdfWidth = 210;
