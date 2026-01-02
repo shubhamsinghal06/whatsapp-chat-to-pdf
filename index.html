@@ -662,70 +662,43 @@
                 const senders = [...new Set(chatData.messages.map(m => m.sender))];
                 const currentUser = senders[0];
 
-                // Append container to DOM first (important for html2pdf)
+                // Append container to DOM first
                 pdfContent.appendChild(chatContainer);
 
-                // Process messages in batches to avoid blocking UI
-                const BATCH_SIZE = 50;
-                const totalMessages = chatData.messages.length;
+                // Add all messages synchronously (works better with html2pdf)
+                loadingText.textContent = 'Adding messages to PDF...';
                 
-                for (let i = 0; i < totalMessages; i += BATCH_SIZE) {
-                    const batch = chatData.messages.slice(i, Math.min(i + BATCH_SIZE, totalMessages));
+                chatData.messages.forEach((msg, index) => {
+                    const messageDiv = createMessageElement(msg, currentUser);
+                    chatContainer.appendChild(messageDiv);
                     
-                    // Update progress
-                    const progress = Math.round((i / totalMessages) * 100);
-                    loadingText.textContent = `Formatting messages... ${progress}%`;
-                    
-                    // Process batch
-                    await new Promise(resolve => {
-                        requestAnimationFrame(() => {
-                            batch.forEach(msg => {
-                                const messageDiv = createMessageElement(msg, currentUser);
-                                chatContainer.appendChild(messageDiv);
-                            });
-                            resolve();
-                        });
-                    });
-                    
-                    // Small delay to keep UI responsive
-                    await new Promise(resolve => setTimeout(resolve, 10));
-                }
+                    // Update progress every 50 messages
+                    if (index % 50 === 0) {
+                        const progress = Math.round((index / chatData.messages.length) * 100);
+                        loadingText.textContent = `Adding messages... ${progress}%`;
+                    }
+                });
 
                 // Generate PDF
                 loadingText.textContent = 'Converting to PDF... Please wait...';
                 
-                // Give DOM time to fully render all batched content
-                // Wait for any images to load
-                const images = chatContainer.querySelectorAll('img');
-                if (images.length > 0) {
-                    await Promise.all(Array.from(images).map(img => {
-                        if (img.complete) return Promise.resolve();
-                        return new Promise(resolve => {
-                            img.onload = resolve;
-                            img.onerror = resolve;
-                        });
-                    }));
-                }
-                
-                // Extra wait for full render
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Small delay to let the browser render
+                await new Promise(resolve => setTimeout(resolve, 300));
                 
                 console.log('Chat container has', chatContainer.children.length, 'elements');
-                console.log('First few messages:', Array.from(chatContainer.querySelectorAll('.pdf-message')).slice(0, 3));
                 console.log('Container dimensions:', chatContainer.offsetWidth, 'x', chatContainer.offsetHeight);
+                console.log('Is container visible?', chatContainer.offsetHeight > 0);
                 
                 const opt = {
                     margin: 10,
                     filename: 'whatsapp-chat.pdf',
-                    image: { type: 'jpeg', quality: 0.95 },
+                    image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { 
                         scale: 2,
                         useCORS: true,
-                        logging: true,
+                        logging: false,
                         allowTaint: true,
-                        backgroundColor: '#e5ddd5',
-                        width: 800,
-                        height: chatContainer.offsetHeight
+                        backgroundColor: '#e5ddd5'
                     },
                     jsPDF: { 
                         unit: 'mm', 
@@ -735,7 +708,6 @@
                     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
                 };
 
-                // Use element() method instead of from()
                 await html2pdf().set(opt).from(chatContainer).save();
 
                 loadingText.textContent = 'PDF generated successfully!';
