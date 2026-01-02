@@ -287,11 +287,10 @@
             top: 0;
             left: 0;
             width: 800px;
-            max-height: 100vh;
-            overflow: hidden;
             opacity: 0;
             pointer-events: none;
             z-index: -1;
+            overflow: visible;
         }
 
         #pdfContent.generating {
@@ -303,7 +302,7 @@
             background: #e5ddd5;
             padding: 20px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
+            width: 760px;
         }
 
         .pdf-header {
@@ -696,10 +695,24 @@
                 loadingText.textContent = 'Converting to PDF... Please wait...';
                 
                 // Give DOM time to fully render all batched content
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Wait for any images to load
+                const images = chatContainer.querySelectorAll('img');
+                if (images.length > 0) {
+                    await Promise.all(Array.from(images).map(img => {
+                        if (img.complete) return Promise.resolve();
+                        return new Promise(resolve => {
+                            img.onload = resolve;
+                            img.onerror = resolve;
+                        });
+                    }));
+                }
+                
+                // Extra wait for full render
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 console.log('Chat container has', chatContainer.children.length, 'elements');
                 console.log('First few messages:', Array.from(chatContainer.querySelectorAll('.pdf-message')).slice(0, 3));
+                console.log('Container dimensions:', chatContainer.offsetWidth, 'x', chatContainer.offsetHeight);
                 
                 const opt = {
                     margin: 10,
@@ -710,7 +723,9 @@
                         useCORS: true,
                         logging: true,
                         allowTaint: true,
-                        backgroundColor: '#e5ddd5'
+                        backgroundColor: '#e5ddd5',
+                        width: 800,
+                        height: chatContainer.offsetHeight
                     },
                     jsPDF: { 
                         unit: 'mm', 
