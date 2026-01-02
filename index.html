@@ -237,6 +237,8 @@
             font-size: 14px;
             color: #303030;
             line-height: 1.4;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
 
         .message-time {
@@ -501,6 +503,13 @@
                 line = line.trim();
                 if (!line) continue;
 
+                // Skip system messages
+                if (line.includes('Messages and calls are end-to-end encrypted') ||
+                    line.includes('Your security code with') ||
+                    line.includes('changed.')) {
+                    continue;
+                }
+
                 let matched = false;
                 for (let pattern of patterns) {
                     const match = line.match(pattern);
@@ -529,7 +538,25 @@
                 messages.push(currentMessage);
             }
 
-            return messages;
+            // Filter out contact cards and other system messages from message text
+            return messages.map(msg => {
+                // Clean up contact card references
+                let text = msg.text;
+                text = text.replace(/\(file attached\)/gi, '');
+                text = text.replace(/Contact card omitted/gi, '📇 Contact card');
+                text = text.replace(/<Media omitted>/gi, '🖼️ Media');
+                text = text.replace(/image omitted/gi, '🖼️ Image');
+                text = text.replace(/video omitted/gi, '🎥 Video');
+                text = text.replace(/audio omitted/gi, '🎵 Audio');
+                text = text.replace(/sticker omitted/gi, '😀 Sticker');
+                text = text.replace(/GIF omitted/gi, '🎬 GIF');
+                text = text.replace(/document omitted/gi, '📄 Document');
+                
+                return {
+                    ...msg,
+                    text: text.trim()
+                };
+            }).filter(msg => msg.text || msg.text === ''); // Keep all messages even if text is empty
         }
 
         function renderPreview() {
@@ -571,6 +598,8 @@
                 if (messageText) {
                     const textDiv = document.createElement('div');
                     textDiv.className = 'message-text';
+                    // Preserve line breaks and formatting
+                    textDiv.style.whiteSpace = 'pre-wrap';
                     textDiv.textContent = messageText;
                     contentDiv.appendChild(textDiv);
                 }
@@ -654,6 +683,8 @@
                     if (messageText) {
                         const textDiv = document.createElement('div');
                         textDiv.className = 'pdf-message-text';
+                        // Preserve line breaks and formatting
+                        textDiv.style.whiteSpace = 'pre-wrap';
                         textDiv.textContent = messageText;
                         contentDiv.appendChild(textDiv);
                     }
