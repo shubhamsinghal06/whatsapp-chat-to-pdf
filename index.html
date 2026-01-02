@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Chat to PDF</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -687,26 +688,65 @@
                 console.log('Container dimensions:', chatContainer.offsetWidth, 'x', chatContainer.offsetHeight);
                 console.log('Is container visible?', chatContainer.offsetHeight > 0);
                 
-                const opt = {
-                    margin: 10,
-                    filename: 'whatsapp-chat.pdf',
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { 
-                        scale: 2,
-                        useCORS: true,
-                        logging: true,
-                        allowTaint: true,
-                        backgroundColor: '#e5ddd5'
-                    },
-                    jsPDF: { 
-                        unit: 'mm', 
-                        format: 'a4', 
-                        orientation: 'portrait' 
-                    },
-                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-                };
-
-                await html2pdf().set(opt).from(chatContainer).save();
+                loadingText.textContent = 'Capturing screenshot...';
+                
+                // Use html2canvas to capture the content
+                const canvas = await html2canvas(chatContainer, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#e5ddd5',
+                    width: chatContainer.offsetWidth,
+                    height: chatContainer.offsetHeight,
+                    windowWidth: chatContainer.offsetWidth,
+                    windowHeight: chatContainer.offsetHeight
+                });
+                
+                console.log('Canvas created:', canvas.width, 'x', canvas.height);
+                loadingText.textContent = 'Creating PDF from image...';
+                
+                // Convert canvas to image
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                
+                // Create PDF with jsPDF
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                // A4 dimensions in mm
+                const pdfWidth = 210;
+                const pdfHeight = 297;
+                const margin = 10;
+                const contentWidth = pdfWidth - (margin * 2);
+                
+                // Calculate image dimensions to fit in PDF
+                const imgWidth = contentWidth;
+                const imgHeight = (canvas.height * contentWidth) / canvas.width;
+                
+                // Calculate how many pages we need
+                const pageHeight = pdfHeight - (margin * 2);
+                let heightLeft = imgHeight;
+                let position = margin;
+                
+                // Add first page
+                pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                // Add additional pages if content is longer
+                while (heightLeft > 0) {
+                    position = heightLeft - imgHeight + margin;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                // Save the PDF
+                pdf.save('whatsapp-chat.pdf');
+                
+                console.log('PDF saved successfully');
 
                 loadingText.textContent = 'PDF generated successfully!';
                 showStatus('PDF generated successfully!', 'success');
