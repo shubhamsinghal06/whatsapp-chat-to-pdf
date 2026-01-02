@@ -283,14 +283,20 @@
 
         /* PDF specific styles */
         #pdfContent {
-            position: absolute;
-            left: -9999px;
+            position: fixed;
             top: 0;
+            left: 0;
+            width: 800px;
+            max-height: 100vh;
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
             z-index: -1;
         }
 
-        .pdf-content {
-            display: block;
+        #pdfContent.generating {
+            opacity: 1;
+            z-index: 9999;
         }
 
         .pdf-chat-container {
@@ -637,6 +643,7 @@
             try {
                 const pdfContent = document.getElementById('pdfContent');
                 pdfContent.innerHTML = '';
+                pdfContent.classList.add('generating');
 
                 loadingText.textContent = `Formatting ${chatData.messages.length} messages...`;
 
@@ -702,8 +709,8 @@
                         scale: 2,
                         useCORS: true,
                         logging: true,
-                        windowWidth: 800,
-                        windowHeight: document.body.scrollHeight
+                        allowTaint: true,
+                        backgroundColor: '#e5ddd5'
                     },
                     jsPDF: { 
                         unit: 'mm', 
@@ -723,6 +730,10 @@
                 console.error('PDF Generation Error:', error);
                 showStatus(`Error generating PDF: ${error.message}`, 'error');
             } finally {
+                // Clean up
+                const pdfContent = document.getElementById('pdfContent');
+                pdfContent.classList.remove('generating');
+                
                 loading.style.display = 'none';
                 generateBtn.disabled = false;
                 generateBtn.classList.remove('loading');
