@@ -649,59 +649,39 @@
                 const senders = [...new Set(chatData.messages.map(m => m.sender))];
                 const currentUser = senders[0];
 
-                // Add all messages
-                chatData.messages.forEach(msg => {
-                    const messageDiv = document.createElement('div');
-                    messageDiv.className = `pdf-message ${msg.sender === currentUser ? 'sent' : 'received'}`;
+                // Process messages in batches to avoid blocking UI
+                const BATCH_SIZE = 50;
+                const totalMessages = chatData.messages.length;
+                
+                for (let i = 0; i < totalMessages; i += BATCH_SIZE) {
+                    const batch = chatData.messages.slice(i, Math.min(i + BATCH_SIZE, totalMessages));
                     
-                    const contentDiv = document.createElement('div');
-                    contentDiv.className = 'pdf-message-content';
+                    // Update progress
+                    const progress = Math.round((i / totalMessages) * 100);
+                    loadingText.textContent = `Formatting messages... ${progress}%`;
                     
-                    if (msg.sender !== currentUser) {
-                        const senderDiv = document.createElement('div');
-                        senderDiv.className = 'pdf-message-sender';
-                        senderDiv.textContent = msg.sender;
-                        contentDiv.appendChild(senderDiv);
-                    }
-
-                    // Check for images
-                    let messageText = msg.text;
-                    let imageMatch = messageText.match(/<attached:\s*([^>]+)>/i) || 
-                                    messageText.match(/([^\s]+\.(jpg|jpeg|png|gif|webp))/i);
+                    // Process batch
+                    await new Promise(resolve => {
+                        requestAnimationFrame(() => {
+                            batch.forEach(msg => {
+                                const messageDiv = createMessageElement(msg, currentUser);
+                                chatContainer.appendChild(messageDiv);
+                            });
+                            resolve();
+                        });
+                    });
                     
-                    if (imageMatch) {
-                        const imageName = imageMatch[1];
-                        if (chatData.images[imageName]) {
-                            const img = document.createElement('img');
-                            img.className = 'pdf-message-image';
-                            img.src = chatData.images[imageName];
-                            contentDiv.appendChild(img);
-                            messageText = messageText.replace(imageMatch[0], '').trim();
-                        }
-                    }
-
-                    if (messageText) {
-                        const textDiv = document.createElement('div');
-                        textDiv.className = 'pdf-message-text';
-                        // Preserve line breaks and formatting
-                        textDiv.style.whiteSpace = 'pre-wrap';
-                        textDiv.textContent = messageText;
-                        contentDiv.appendChild(textDiv);
-                    }
-
-                    const timeDiv = document.createElement('div');
-                    timeDiv.className = 'pdf-message-time';
-                    timeDiv.textContent = msg.timestamp;
-                    contentDiv.appendChild(timeDiv);
-
-                    messageDiv.appendChild(contentDiv);
-                    chatContainer.appendChild(messageDiv);
-                });
+                    // Small delay to keep UI responsive
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
 
                 pdfContent.appendChild(chatContainer);
 
                 // Generate PDF
                 loadingText.textContent = 'Converting to PDF... Please wait...';
+                
+                // Give UI time to update before heavy PDF generation
+                await new Promise(resolve => setTimeout(resolve, 100));
                 
                 const opt = {
                     margin: 10,
@@ -733,6 +713,55 @@
                 generateBtn.classList.remove('loading');
                 generateBtn.textContent = 'Generate PDF';
             }
+        }
+
+        // Helper function to create message elements
+        function createMessageElement(msg, currentUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `pdf-message ${msg.sender === currentUser ? 'sent' : 'received'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'pdf-message-content';
+            
+            if (msg.sender !== currentUser) {
+                const senderDiv = document.createElement('div');
+                senderDiv.className = 'pdf-message-sender';
+                senderDiv.textContent = msg.sender;
+                contentDiv.appendChild(senderDiv);
+            }
+
+            // Check for images
+            let messageText = msg.text;
+            let imageMatch = messageText.match(/<attached:\s*([^>]+)>/i) || 
+                            messageText.match(/([^\s]+\.(jpg|jpeg|png|gif|webp))/i);
+            
+            if (imageMatch) {
+                const imageName = imageMatch[1];
+                if (chatData.images[imageName]) {
+                    const img = document.createElement('img');
+                    img.className = 'pdf-message-image';
+                    img.src = chatData.images[imageName];
+                    contentDiv.appendChild(img);
+                    messageText = messageText.replace(imageMatch[0], '').trim();
+                }
+            }
+
+            if (messageText) {
+                const textDiv = document.createElement('div');
+                textDiv.className = 'pdf-message-text';
+                // Preserve line breaks and formatting
+                textDiv.style.whiteSpace = 'pre-wrap';
+                textDiv.textContent = messageText;
+                contentDiv.appendChild(textDiv);
+            }
+
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'pdf-message-time';
+            timeDiv.textContent = msg.timestamp;
+            contentDiv.appendChild(timeDiv);
+
+            messageDiv.appendChild(contentDiv);
+            return messageDiv;
         }
 
         function showStatus(message, type) {
