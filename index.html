@@ -331,6 +331,16 @@
             margin-top: 5px;
         }
 
+        .message-video {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .message-video:hover {
+            opacity: 0.9;
+        }
+
         .loading {
             display: none;
             text-align: center;
@@ -500,6 +510,7 @@
         let chatData = {
             messages: [],
             images: {},
+            videos: {}, // Store video thumbnails
             allMessages: [] // Store all messages for filtering
         };
 
@@ -586,13 +597,14 @@
                 const zip = await JSZip.loadAsync(file);
                 let chatFile = null;
                 const images = {};
+                const videos = {};
 
-                // Find chat text file and images
+                // Find chat text file, images, and videos
                 for (let filename in zip.files) {
                     if (filename.endsWith('.txt')) {
                         chatFile = zip.files[filename];
                     } else if (filename.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-                        // Convert to base64 data URL for cross-window compatibility
+                        // Convert images to base64 data URL for cross-window compatibility
                         const blob = await zip.files[filename].async('blob');
                         const reader = new FileReader();
                         const dataUrl = await new Promise((resolve) => {
@@ -600,6 +612,14 @@
                             reader.readAsDataURL(blob);
                         });
                         images[filename] = dataUrl;
+                    } else if (filename.match(/\.(mp4|mov|avi|mkv|webm|3gp)$/i)) {
+                        // Process video files - create thumbnail
+                        showStatus('Processing video files...', 'info');
+                        const blob = await zip.files[filename].async('blob');
+                        const thumbnail = await generateVideoThumbnail(blob);
+                        if (thumbnail) {
+                            videos[filename] = thumbnail;
+                        }
                     }
                 }
 
@@ -612,6 +632,7 @@
                 chatData.allMessages = parsedMessages;
                 chatData.messages = parsedMessages; // Initially show all messages
                 chatData.images = images;
+                chatData.videos = videos;
 
                 showStatus(`Successfully loaded ${chatData.allMessages.length} messages`, 'success');
                 openHtmlBtn.disabled = false;
@@ -634,6 +655,68 @@
             } finally {
                 loading.style.display = 'none';
             }
+        }
+
+        async function generateVideoThumbnail(videoBlob) {
+            return new Promise((resolve) => {
+                try {
+                    const video = document.createElement('video');
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    video.preload = 'metadata';
+                    video.muted = true;
+                    video.playsInline = true;
+                    
+                    video.onloadedmetadata = () => {
+                        // Seek to 1 second or 10% of video duration, whichever is smaller
+                        const seekTime = Math.min(1, video.duration * 0.1);
+                        video.currentTime = seekTime;
+                    };
+                    
+                    video.onseeked = () => {
+                        try {
+                            // Set canvas dimensions to video dimensions
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            
+                            // Draw video frame to canvas
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            
+                            // Convert canvas to data URL
+                            const thumbnail = canvas.toDataURL('image/jpeg', 0.8);
+                            
+                            // Clean up
+                            URL.revokeObjectURL(video.src);
+                            resolve(thumbnail);
+                        } catch (error) {
+                            console.error('Error generating thumbnail:', error);
+                            resolve(null);
+                        }
+                    };
+                    
+                    video.onerror = () => {
+                        console.error('Error loading video for thumbnail');
+                        URL.revokeObjectURL(video.src);
+                        resolve(null);
+                    };
+                    
+                    // Create object URL from blob
+                    video.src = URL.createObjectURL(videoBlob);
+                    video.load();
+                    
+                    // Timeout after 10 seconds
+                    setTimeout(() => {
+                        if (video.src) {
+                            URL.revokeObjectURL(video.src);
+                        }
+                        resolve(null);
+                    }, 10000);
+                } catch (error) {
+                    console.error('Error in generateVideoThumbnail:', error);
+                    resolve(null);
+                }
+            });
         }
 
         function parseWhatsAppChat(text) {
@@ -963,10 +1046,12 @@
                 contentDiv.appendChild(senderDiv);
             }
 
-            // Check if message contains image reference
+            // Check if message contains image or video reference
             let messageText = msg.text;
             let imageMatch = messageText.match(/<attached:\s*([^>]+)>/i) || 
                             messageText.match(/([^\s]+\.(jpg|jpeg|png|gif|webp))/i);
+            
+            let videoMatch = messageText.match(/([^\s]+\.(mp4|mov|avi|mkv|webm|3gp))/i);
             
             if (imageMatch) {
                 const imageName = imageMatch[1];
@@ -976,6 +1061,35 @@
                     img.src = chatData.images[imageName];
                     contentDiv.appendChild(img);
                     messageText = messageText.replace(imageMatch[0], '').trim();
+                }
+            }
+            
+            if (videoMatch) {
+                const videoName = videoMatch[1];
+                if (chatData.videos[videoName]) {
+                    const videoContainer = document.createElement('div');
+                    videoContainer.className = 'message-video';
+                    videoContainer.style.position = 'relative';
+                    
+                    const img = document.createElement('img');
+                    img.className = 'message-image';
+                    img.src = chatData.videos[videoName];
+                    
+                    // Add play button overlay
+                    const playIcon = document.createElement('div');
+                    playIcon.innerHTML = '▶️';
+                    playIcon.style.position = 'absolute';
+                    playIcon.style.top = '50%';
+                    playIcon.style.left = '50%';
+                    playIcon.style.transform = 'translate(-50%, -50%)';
+                    playIcon.style.fontSize = '48px';
+                    playIcon.style.textShadow = '0 0 10px rgba(0,0,0,0.5)';
+                    playIcon.style.pointerEvents = 'none';
+                    
+                    videoContainer.appendChild(img);
+                    videoContainer.appendChild(playIcon);
+                    contentDiv.appendChild(videoContainer);
+                    messageText = messageText.replace(videoMatch[0], '').trim();
                 }
             }
 
@@ -1185,7 +1299,7 @@
 ${chatData.messages.map(msg => {
     const isSent = msg.sender === currentUser;
     let messageText = msg.text;
-    let imageHtml = '';
+    let mediaHtml = '';
     
     // Check for images - try different patterns
     let imageMatch = messageText.match(/<attached:\s*([^>]+)>/i) || 
@@ -1195,8 +1309,22 @@ ${chatData.messages.map(msg => {
         const imageName = imageMatch[1];
         console.log('Looking for image:', imageName, 'Available:', Object.keys(chatData.images));
         if (chatData.images[imageName]) {
-            imageHtml = '<img class="message-image" src="' + chatData.images[imageName] + '" alt="Image">';
+            mediaHtml = '<img class="message-image" src="' + chatData.images[imageName] + '" alt="Image">';
             messageText = messageText.replace(imageMatch[0], '').trim();
+        }
+    }
+    
+    // Check for videos
+    let videoMatch = messageText.match(/([^\s]+\.(mp4|mov|avi|mkv|webm|3gp))/i);
+    
+    if (videoMatch) {
+        const videoName = videoMatch[1];
+        if (chatData.videos[videoName]) {
+            mediaHtml = '<div style="position: relative; display: inline-block;">' +
+                       '<img class="message-image" src="' + chatData.videos[videoName] + '" alt="Video thumbnail">' +
+                       '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; text-shadow: 0 0 10px rgba(0,0,0,0.5);">▶️</div>' +
+                       '</div>';
+            messageText = messageText.replace(videoMatch[0], '').trim();
         }
     }
 
@@ -1207,7 +1335,7 @@ ${chatData.messages.map(msg => {
     return '<div class="message ' + (isSent ? 'sent' : 'received') + '">' +
            '<div class="message-content">' +
            (!isSent ? '<div class="message-sender">' + msg.sender + '</div>' : '') +
-           imageHtml +
+           mediaHtml +
            (messageText ? '<div class="message-text">' + messageText + '</div>' : '') +
            '<div class="message-time">' + formattedTime + '</div>' +
            '</div>' +
