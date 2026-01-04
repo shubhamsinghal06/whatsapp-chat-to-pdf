@@ -199,13 +199,31 @@
         .date-inputs {
             display: flex;
             gap: 15px;
-            align-items: center;
+            align-items: flex-end;
             flex-wrap: wrap;
         }
 
         .date-group {
             flex: 1;
             min-width: 200px;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
         .date-group label {
@@ -454,6 +472,7 @@
                         <label for="endDate">To Date:</label>
                         <input type="date" id="endDate">
                     </div>
+                    <button class="btn-reset" id="clearFilterBtn">Clear Filter</button>
                 </div>
                 <div class="filter-info" id="filterInfo">
                     💡 Leave empty to include all messages
@@ -497,13 +516,15 @@
         const startDateInput = document.getElementById('startDate');
         const endDateInput = document.getElementById('endDate');
         const filterInfo = document.getElementById('filterInfo');
+        const clearFilterBtn = document.getElementById('clearFilterBtn');
         
         console.log('Elements found:', {
             uploadBox: !!uploadBox,
             fileInput: !!fileInput,
             openHtmlBtn: !!openHtmlBtn,
             downloadHtmlBtn: !!downloadHtmlBtn,
-            dateFilter: !!dateFilter
+            dateFilter: !!dateFilter,
+            clearFilterBtn: !!clearFilterBtn
         });
 
         // Upload box click
@@ -547,6 +568,9 @@
         // Date filter change listeners
         startDateInput.addEventListener('change', updateDateFilter);
         endDateInput.addEventListener('change', updateDateFilter);
+        
+        // Clear filter button
+        clearFilterBtn.addEventListener('click', clearDateFilter);
 
         async function handleFile(file) {
             if (!file.name.endsWith('.zip')) {
@@ -593,8 +617,9 @@
                 openHtmlBtn.disabled = false;
                 downloadHtmlBtn.disabled = false;
                 
-                // Show date filter
+                // Show date filter and populate with first and last message dates
                 dateFilter.style.display = 'block';
+                populateDateRangeFromMessages();
                 updateFilterInfo();
                 
                 // Show preview
@@ -807,6 +832,61 @@
                 const endStr = endDate ? new Date(endDate).toLocaleDateString() : 'end';
                 filterInfo.innerHTML = `📅 Showing messages from ${startStr} to ${endStr} | ${chatData.messages.length} of ${chatData.allMessages.length} messages`;
             }
+        }
+
+        function populateDateRangeFromMessages() {
+            if (chatData.allMessages.length === 0) return;
+            
+            let firstDate = null;
+            let lastDate = null;
+            
+            // Find first valid date
+            for (let msg of chatData.allMessages) {
+                const date = parseMessageDate(msg.timestamp);
+                if (date) {
+                    firstDate = date;
+                    break;
+                }
+            }
+            
+            // Find last valid date (iterate from end)
+            for (let i = chatData.allMessages.length - 1; i >= 0; i--) {
+                const date = parseMessageDate(chatData.allMessages[i].timestamp);
+                if (date) {
+                    lastDate = date;
+                    break;
+                }
+            }
+            
+            // Populate the date inputs
+            if (firstDate) {
+                startDateInput.value = formatDateForInput(firstDate);
+            }
+            
+            if (lastDate) {
+                endDateInput.value = formatDateForInput(lastDate);
+            }
+            
+            // Update the filter info to show the date range
+            if (firstDate && lastDate) {
+                filterInfo.innerHTML = `📅 Chat date range: ${firstDate.toLocaleDateString()} to ${lastDate.toLocaleDateString()} | Showing: ${chatData.messages.length} messages`;
+            }
+        }
+
+        function formatDateForInput(date) {
+            // Format date as YYYY-MM-DD for input[type="date"]
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function clearDateFilter() {
+            startDateInput.value = '';
+            endDateInput.value = '';
+            chatData.messages = chatData.allMessages;
+            renderPreview();
+            filterInfo.innerHTML = `💡 Showing all messages | ${chatData.allMessages.length} messages`;
         }
 
         function renderPreview() {
