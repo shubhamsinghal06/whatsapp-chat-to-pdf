@@ -803,20 +803,19 @@ ${chatData.messages.map(msg => {
         const imageName = imageMatch[1];
         console.log('Looking for image:', imageName, 'Available:', Object.keys(chatData.images));
         if (chatData.images[imageName]) {
-            imageHtml = \`<img class="message-image" src="\${chatData.images[imageName]}" alt="Image">\`;
+            imageHtml = '<img class="message-image" src="' + chatData.images[imageName] + '" alt="Image">';
             messageText = messageText.replace(imageMatch[0], '').trim();
         }
     }
 
-    return \`
-            <div class="message \${isSent ? 'sent' : 'received'}">
-                <div class="message-content">
-                    \${!isSent ? \`<div class="message-sender">\${msg.sender}</div>\` : ''}
-                    \${imageHtml}
-                    \${messageText ? \`<div class="message-text">\${messageText}</div>\` : ''}
-                    <div class="message-time">\${msg.timestamp}</div>
-                </div>
-            </div>\`;
+    return '<div class="message ' + (isSent ? 'sent' : 'received') + '">' +
+           '<div class="message-content">' +
+           (!isSent ? '<div class="message-sender">' + msg.sender + '</div>' : '') +
+           imageHtml +
+           (messageText ? '<div class="message-text">' + messageText + '</div>' : '') +
+           '<div class="message-time">' + msg.timestamp + '</div>' +
+           '</div>' +
+           '</div>';
 }).join('')}
         </div>
     </div>
