@@ -782,27 +782,28 @@ ${chatData.messages.map(msg => {
     let messageText = msg.text;
     let imageHtml = '';
     
-    // Check for images
-    let imageMatch = messageText.match(/<attached:\\s*([^>]+)>/i) || 
-                    messageText.match(/([^\\s]+\\.(jpg|jpeg|png|gif|webp))/i);
+    // Check for images - try different patterns
+    let imageMatch = messageText.match(/<attached:\s*([^>]+)>/i) || 
+                    messageText.match(/([^\s]+\.(jpg|jpeg|png|gif|webp))/i);
     
     if (imageMatch) {
         const imageName = imageMatch[1];
+        console.log('Looking for image:', imageName, 'Available:', Object.keys(chatData.images));
         if (chatData.images[imageName]) {
-            imageHtml = `<img class="message-image" src="${chatData.images[imageName]}" alt="Image">`;
+            imageHtml = \`<img class="message-image" src="\${chatData.images[imageName]}" alt="Image">\`;
             messageText = messageText.replace(imageMatch[0], '').trim();
         }
     }
 
-    return `
-            <div class="message ${isSent ? 'sent' : 'received'}">
+    return \`
+            <div class="message \${isSent ? 'sent' : 'received'}">
                 <div class="message-content">
-                    ${!isSent ? `<div class="message-sender">${msg.sender}</div>` : ''}
-                    ${imageHtml}
-                    ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
-                    <div class="message-time">${msg.timestamp}</div>
+                    \${!isSent ? \`<div class="message-sender">\${msg.sender}</div>\` : ''}
+                    \${imageHtml}
+                    \${messageText ? \`<div class="message-text">\${messageText}</div>\` : ''}
+                    <div class="message-time">\${msg.timestamp}</div>
                 </div>
-            </div>`;
+            </div>\`;
 }).join('')}
         </div>
     </div>
