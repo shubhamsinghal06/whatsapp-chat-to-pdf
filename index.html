@@ -181,6 +181,64 @@
             border-radius: 10px;
         }
 
+        .date-filter {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .date-filter h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .date-inputs {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .date-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .date-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .date-group input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .date-group input[type="date"]:focus {
+            outline: none;
+            border-color: #25D366;
+        }
+
+        .filter-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #2e7d32;
+        }
+
         .chat-preview {
             background: #e5ddd5;
             padding: 20px;
@@ -385,6 +443,23 @@
 
             <div class="status" id="status"></div>
 
+            <div class="date-filter" id="dateFilter">
+                <h3>📅 Filter by Date Range (Optional)</h3>
+                <div class="date-inputs">
+                    <div class="date-group">
+                        <label for="startDate">From Date:</label>
+                        <input type="date" id="startDate">
+                    </div>
+                    <div class="date-group">
+                        <label for="endDate">To Date:</label>
+                        <input type="date" id="endDate">
+                    </div>
+                </div>
+                <div class="filter-info" id="filterInfo">
+                    💡 Leave empty to include all messages
+                </div>
+            </div>
+
             <div class="loading" id="loading">
                 <div class="spinner"></div>
                 <p id="loadingText">Processing your chat...</p>
@@ -405,7 +480,8 @@
         
         let chatData = {
             messages: [],
-            images: {}
+            images: {},
+            allMessages: [] // Store all messages for filtering
         };
 
         const uploadBox = document.getElementById('uploadBox');
@@ -417,12 +493,17 @@
         const loadingText = document.getElementById('loadingText');
         const preview = document.getElementById('preview');
         const chatPreview = document.getElementById('chatPreview');
+        const dateFilter = document.getElementById('dateFilter');
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        const filterInfo = document.getElementById('filterInfo');
         
         console.log('Elements found:', {
             uploadBox: !!uploadBox,
             fileInput: !!fileInput,
             openHtmlBtn: !!openHtmlBtn,
-            downloadHtmlBtn: !!downloadHtmlBtn
+            downloadHtmlBtn: !!downloadHtmlBtn,
+            dateFilter: !!dateFilter
         });
 
         // Upload box click
@@ -463,6 +544,10 @@
         // Download HTML button
         downloadHtmlBtn.addEventListener('click', downloadAsHtml);
 
+        // Date filter change listeners
+        startDateInput.addEventListener('change', updateDateFilter);
+        endDateInput.addEventListener('change', updateDateFilter);
+
         async function handleFile(file) {
             if (!file.name.endsWith('.zip')) {
                 showStatus('Please select a valid ZIP file', 'error');
@@ -499,12 +584,18 @@
                 }
 
                 const chatText = await chatFile.async('text');
-                chatData.messages = parseWhatsAppChat(chatText);
+                const parsedMessages = parseWhatsAppChat(chatText);
+                chatData.allMessages = parsedMessages;
+                chatData.messages = parsedMessages; // Initially show all messages
                 chatData.images = images;
 
-                showStatus(`Successfully loaded ${chatData.messages.length} messages`, 'success');
+                showStatus(`Successfully loaded ${chatData.allMessages.length} messages`, 'success');
                 openHtmlBtn.disabled = false;
                 downloadHtmlBtn.disabled = false;
+                
+                // Show date filter
+                dateFilter.style.display = 'block';
+                updateFilterInfo();
                 
                 // Show preview
                 renderPreview();
@@ -593,6 +684,129 @@
                     text: text.trim()
                 };
             }).filter(msg => msg.text || msg.text === ''); // Keep all messages even if text is empty
+        }
+
+        function parseMessageDate(timestamp) {
+            // Parse various WhatsApp date formats
+            // Examples: "1/15/24, 3:45 PM", "15/1/24, 15:45", "[15/01/2024, 15:45:30]"
+            
+            // Clean up the timestamp
+            let cleanTimestamp = timestamp.replace(/[\[\]]/g, '').trim();
+            
+            // Try different date parsing approaches
+            try {
+                // Pattern: DD/MM/YY or MM/DD/YY or D/M/YY
+                const datePattern = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/;
+                const timePattern = /(\d{1,2}):(\d{2})/;
+                
+                const dateMatch = cleanTimestamp.match(datePattern);
+                const timeMatch = cleanTimestamp.match(timePattern);
+                
+                if (dateMatch) {
+                    let day, month, year;
+                    
+                    // Determine if it's DD/MM/YY or MM/DD/YY
+                    // WhatsApp typically uses DD/MM/YY in most regions
+                    // But US uses MM/DD/YY
+                    const part1 = parseInt(dateMatch[1]);
+                    const part2 = parseInt(dateMatch[2]);
+                    
+                    // If first part > 12, it must be day (DD/MM/YY format)
+                    // If second part > 12, it must be day (MM/DD/YY format)
+                    if (part1 > 12) {
+                        day = part1;
+                        month = part2;
+                    } else if (part2 > 12) {
+                        month = part1;
+                        day = part2;
+                    } else {
+                        // Ambiguous - assume DD/MM/YY (most common)
+                        day = part1;
+                        month = part2;
+                    }
+                    
+                    year = parseInt(dateMatch[3]);
+                    // Convert 2-digit year to 4-digit
+                    if (year < 100) {
+                        year += year < 50 ? 2000 : 1900;
+                    }
+                    
+                    let hours = 0, minutes = 0;
+                    if (timeMatch) {
+                        hours = parseInt(timeMatch[1]);
+                        minutes = parseInt(timeMatch[2]);
+                        
+                        // Handle AM/PM
+                        if (cleanTimestamp.includes('PM') && hours < 12) {
+                            hours += 12;
+                        } else if (cleanTimestamp.includes('AM') && hours === 12) {
+                            hours = 0;
+                        }
+                    }
+                    
+                    // Create date object (month is 0-indexed in JS)
+                    return new Date(year, month - 1, day, hours, minutes);
+                }
+            } catch (error) {
+                console.error('Error parsing date:', timestamp, error);
+            }
+            
+            return null;
+        }
+
+        function filterMessagesByDate(messages, startDate, endDate) {
+            if (!startDate && !endDate) {
+                return messages;
+            }
+            
+            return messages.filter(msg => {
+                const msgDate = parseMessageDate(msg.timestamp);
+                if (!msgDate) return true; // Include messages we can't parse
+                
+                // Set time to start of day for comparison
+                const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+                
+                if (startDate && endDate) {
+                    return msgDateOnly >= startDate && msgDateOnly <= endDate;
+                } else if (startDate) {
+                    return msgDateOnly >= startDate;
+                } else if (endDate) {
+                    return msgDateOnly <= endDate;
+                }
+                
+                return true;
+            });
+        }
+
+        function updateDateFilter() {
+            const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
+            const endDate = endDateInput.value ? new Date(endDateInput.value) : null;
+            
+            // Validate date range
+            if (startDate && endDate && startDate > endDate) {
+                showStatus('Start date must be before end date', 'error');
+                return;
+            }
+            
+            // Filter messages
+            chatData.messages = filterMessagesByDate(chatData.allMessages, startDate, endDate);
+            
+            // Update preview
+            renderPreview();
+            updateFilterInfo();
+        }
+
+        function updateFilterInfo() {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            
+            if (!startDate && !endDate) {
+                filterInfo.innerHTML = `💡 Leave empty to include all messages | Showing: ${chatData.messages.length} of ${chatData.allMessages.length} messages`;
+            } else {
+                const startStr = startDate ? new Date(startDate).toLocaleDateString() : 'beginning';
+                const endStr = endDate ? new Date(endDate).toLocaleDateString() : 'end';
+                filterInfo.innerHTML = `📅 Showing messages from ${startStr} to ${endStr} | ${chatData.messages.length} of ${chatData.allMessages.length} messages`;
+            }
         }
 
         function renderPreview() {
