@@ -413,7 +413,10 @@
         const chatPreview = document.getElementById('chatPreview');
 
         // Upload box click
-        uploadBox.addEventListener('click', () => fileInput.click());
+        uploadBox.addEventListener('click', () => {
+            console.log('Upload box clicked, opening file picker...');
+            fileInput.click();
+        });
 
         // Drag and drop
         uploadBox.addEventListener('dragover', (e) => {
