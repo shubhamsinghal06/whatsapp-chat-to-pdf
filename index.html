@@ -456,7 +456,7 @@
                 <input type="file" id="fileInput" accept=".zip">
             </div>
 
-            <button class="btn" id="openHtmlBtn" disabled>Open as HTML Page (Save as PDF)</button>
+            <button class="btn" id="openHtmlBtn" disabled>Open as HTML Page</button>
             <button class="btn" id="downloadHtmlBtn" disabled style="margin-left: 10px;">Download HTML File</button>
 
             <div class="status" id="status"></div>
@@ -621,6 +621,7 @@
                 dateFilter.style.display = 'block';
                 populateDateRangeFromMessages();
                 updateFilterInfo();
+                updateButtonLabels();
                 
                 // Show preview
                 renderPreview();
@@ -819,6 +820,7 @@
             // Update preview
             renderPreview();
             updateFilterInfo();
+            updateButtonLabels();
         }
 
         function updateFilterInfo() {
@@ -919,6 +921,20 @@
             chatData.messages = chatData.allMessages;
             renderPreview();
             filterInfo.innerHTML = `💡 Showing all messages | ${chatData.allMessages.length} messages`;
+            updateButtonLabels();
+        }
+
+        function updateButtonLabels() {
+            const messageCount = chatData.messages.length;
+            const totalCount = chatData.allMessages.length;
+            
+            if (messageCount === totalCount) {
+                openHtmlBtn.textContent = `Open as HTML Page (${messageCount} messages)`;
+                downloadHtmlBtn.textContent = `Download HTML File (${messageCount} messages)`;
+            } else {
+                openHtmlBtn.textContent = `Open as HTML Page (${messageCount} of ${totalCount} messages)`;
+                downloadHtmlBtn.textContent = `Download HTML File (${messageCount} of ${totalCount} messages)`;
+            }
         }
 
         function renderPreview() {
@@ -988,6 +1004,7 @@
         }
 
         function openAsHtml() {
+            console.log('Opening HTML with', chatData.messages.length, 'messages out of', chatData.allMessages.length, 'total');
             const senders = [...new Set(chatData.messages.map(m => m.sender))];
             const currentUser = senders[0];
 
@@ -999,10 +1016,11 @@
             newWindow.document.write(htmlContent);
             newWindow.document.close();
             
-            showStatus('Chat opened in new tab. Press Ctrl+P or Cmd+P to save as PDF!', 'success');
+            showStatus(`Chat opened in new tab with ${chatData.messages.length} filtered messages. Press Ctrl+P or Cmd+P to save as PDF!`, 'success');
         }
 
         function downloadAsHtml() {
+            console.log('Downloading HTML with', chatData.messages.length, 'messages out of', chatData.allMessages.length, 'total');
             const senders = [...new Set(chatData.messages.map(m => m.sender))];
             const currentUser = senders[0];
 
@@ -1022,7 +1040,7 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            showStatus('HTML file downloaded successfully!', 'success');
+            showStatus(`HTML file downloaded with ${chatData.messages.length} filtered messages!`, 'success');
         }
 
         function generateHtmlContent(currentUser) {
