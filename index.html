@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Chat to PDF</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dom-to-image@2.6.0/dist/dom-to-image.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -380,8 +378,7 @@
                 <input type="file" id="fileInput" accept=".zip">
             </div>
 
-            <button class="btn" id="generateBtn" disabled>Generate PDF</button>
-            <button class="btn" id="openHtmlBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin-top: 10px;">Open as HTML (Print to PDF)</button>
+            <button class="btn" id="openHtmlBtn" disabled>Open as HTML Page (Save as PDF)</button>
 
             <div class="status" id="status"></div>
 
@@ -408,7 +405,6 @@
 
         const uploadBox = document.getElementById('uploadBox');
         const fileInput = document.getElementById('fileInput');
-        const generateBtn = document.getElementById('generateBtn');
         const openHtmlBtn = document.getElementById('openHtmlBtn');
         const status = document.getElementById('status');
         const loading = document.getElementById('loading');
@@ -444,9 +440,6 @@
                 handleFile(e.target.files[0]);
             }
         });
-
-        // Generate PDF button
-        generateBtn.addEventListener('click', generatePDF);
 
         // Open HTML button
         openHtmlBtn.addEventListener('click', openAsHtml);
@@ -485,7 +478,6 @@
                 chatData.images = images;
 
                 showStatus(`Successfully loaded ${chatData.messages.length} messages`, 'success');
-                generateBtn.disabled = false;
                 openHtmlBtn.disabled = false;
                 
                 // Show preview
@@ -494,7 +486,7 @@
 
             } catch (error) {
                 showStatus(`Error: ${error.message}`, 'error');
-                generateBtn.disabled = true;
+                openHtmlBtn.disabled = true;
             } finally {
                 loading.style.display = 'none';
             }
@@ -634,137 +626,6 @@
 
             messageDiv.appendChild(contentDiv);
             return messageDiv;
-        }
-
-        async function generatePDF() {
-            // Prevent multiple clicks
-            if (generateBtn.disabled) return;
-            
-            // Show loading state
-            generateBtn.disabled = true;
-            generateBtn.classList.add('loading');
-            generateBtn.textContent = 'Generating PDF...';
-            
-            showStatus('Generating PDF... This may take a moment', 'info');
-            loading.style.display = 'block';
-            loadingText.textContent = 'Preparing chat for PDF...';
-
-            try {
-                const senders = [...new Set(chatData.messages.map(m => m.sender))];
-                const currentUser = senders[0];
-                
-                // Clear and render ALL messages in preview (not just 50)
-                chatPreview.innerHTML = '';
-                loadingText.textContent = 'Rendering all messages...';
-                
-                // Add header
-                const headerDiv = document.createElement('div');
-                headerDiv.style.cssText = 'background: #075E54; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: center;';
-                headerDiv.innerHTML = `<h3 style="margin:0">WhatsApp Chat Export</h3><p style="margin:5px 0 0 0; font-size:14px">${chatData.messages.length} messages</p>`;
-                chatPreview.appendChild(headerDiv);
-                
-                // Process messages in batches for UI responsiveness
-                const BATCH_SIZE = 100;
-                for (let i = 0; i < chatData.messages.length; i += BATCH_SIZE) {
-                    const batch = chatData.messages.slice(i, Math.min(i + BATCH_SIZE, chatData.messages.length));
-                    const progress = Math.round((i / chatData.messages.length) * 100);
-                    loadingText.textContent = `Rendering messages... ${progress}%`;
-                    
-                    await new Promise(resolve => {
-                        requestAnimationFrame(() => {
-                            batch.forEach(msg => {
-                                const messageDiv = createPreviewMessage(msg, currentUser);
-                                chatPreview.appendChild(messageDiv);
-                            });
-                            resolve();
-                        });
-                    });
-                    
-                    await new Promise(resolve => setTimeout(resolve, 10));
-                }
-
-                loadingText.textContent = 'Capturing chat screenshot...';
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                console.log('Capturing chatPreview with dimensions:', chatPreview.offsetWidth, 'x', chatPreview.offsetHeight);
-                
-                // Use dom-to-image instead of html2canvas
-                const dataUrl = await domtoimage.toJpeg(chatPreview, {
-                    quality: 0.95,
-                    bgcolor: '#e5ddd5',
-                    width: chatPreview.offsetWidth,
-                    height: chatPreview.offsetHeight
-                });
-                
-                console.log('Image created, data length:', dataUrl.length);
-                console.log('Image data starts with:', dataUrl.substring(0, 50));
-                
-                loadingText.textContent = 'Creating PDF...';
-                
-                // Convert canvas to image
-                const imgData = dataUrl;
-                console.log('Using image data for PDF');
-                
-                // Create PDF with jsPDF
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'mm',
-                    format: 'a4'
-                });
-                
-                console.log('PDF created, adding image...');
-                
-                // A4 dimensions in mm
-                const pdfWidth = 210;
-                const pdfHeight = 297;
-                const margin = 10;
-                const contentWidth = pdfWidth - (margin * 2);
-                
-                // Calculate image dimensions - use chatPreview dimensions
-                const imgWidth = contentWidth;
-                const imgHeight = (chatPreview.offsetHeight * contentWidth) / chatPreview.offsetWidth;
-                
-                console.log('Image dimensions for PDF:', imgWidth, 'x', imgHeight, 'mm');
-                
-                // Calculate how many pages we need
-                const pageHeight = pdfHeight - (margin * 2);
-                let heightLeft = imgHeight;
-                let position = margin;
-                
-                // Add first page with image
-                pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-                
-                // Add additional pages if content is longer
-                while (heightLeft > 0) {
-                    position = heightLeft - imgHeight + margin;
-                    pdf.addPage();
-                    pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
-                    heightLeft -= pageHeight;
-                }
-                
-                // Save the PDF
-                pdf.save('whatsapp-chat.pdf');
-                
-                console.log('PDF saved successfully');
-
-                loadingText.textContent = 'PDF generated successfully!';
-                showStatus('PDF generated successfully!', 'success');
-                
-                // Restore preview to show only first 50 messages
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                renderPreview();
-                
-            } catch (error) {
-                console.error('PDF Generation Error:', error);
-                showStatus(`Error generating PDF: ${error.message}`, 'error');
-            } finally {
-                loading.style.display = 'none';
-                generateBtn.disabled = false;
-                generateBtn.classList.remove('loading');
-                generateBtn.textContent = 'Generate PDF';
-            }
         }
 
         function openAsHtml() {
