@@ -464,8 +464,14 @@
                     if (filename.endsWith('.txt')) {
                         chatFile = zip.files[filename];
                     } else if (filename.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                        // Convert to base64 data URL for cross-window compatibility
                         const blob = await zip.files[filename].async('blob');
-                        images[filename] = URL.createObjectURL(blob);
+                        const reader = new FileReader();
+                        const dataUrl = await new Promise((resolve) => {
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+                        images[filename] = dataUrl;
                     }
                 }
 
