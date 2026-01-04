@@ -36,6 +36,7 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
         }
 
         .header h1 {
@@ -46,6 +47,17 @@
         .header p {
             font-size: 14px;
             opacity: 0.9;
+        }
+
+        .version {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: 600;
         }
 
         .upload-section {
@@ -123,6 +135,7 @@
         .btn.loading {
             position: relative;
             color: transparent;
+            pointer-events: none;
         }
 
         .btn.loading::after {
@@ -138,6 +151,11 @@
             border-radius: 50%;
             border-top-color: transparent;
             animation: btn-spin 0.8s linear infinite;
+        }
+
+        .btn.processing {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            pointer-events: none;
         }
 
         @keyframes btn-spin {
@@ -454,6 +472,7 @@
 <body>
     <div class="container">
         <div class="header">
+            <div class="version">v1.0.1</div>
             <h1>📱 WhatsApp Chat to PDF</h1>
             <p>Convert your WhatsApp chat exports into beautiful PDF documents</p>
         </div>
@@ -1119,42 +1138,68 @@
 
         function openAsHtml() {
             console.log('Opening HTML with', chatData.messages.length, 'messages out of', chatData.allMessages.length, 'total');
-            const senders = [...new Set(chatData.messages.map(m => m.sender))];
-            const currentUser = senders[0];
-
-            // Create full HTML page
-            const htmlContent = generateHtmlContent(currentUser);
-
-            // Open in new window
-            const newWindow = window.open('', '_blank');
-            newWindow.document.write(htmlContent);
-            newWindow.document.close();
             
-            showStatus(`Chat opened in new tab with ${chatData.messages.length} filtered messages. Press Ctrl+P or Cmd+P to save as PDF!`, 'success');
+            // Show loading state
+            openHtmlBtn.classList.add('processing');
+            const originalText = openHtmlBtn.textContent;
+            openHtmlBtn.textContent = '⏳ Opening...';
+            
+            // Use setTimeout to allow UI to update
+            setTimeout(() => {
+                const senders = [...new Set(chatData.messages.map(m => m.sender))];
+                const currentUser = senders[0];
+
+                // Create full HTML page
+                const htmlContent = generateHtmlContent(currentUser);
+
+                // Open in new window
+                const newWindow = window.open('', '_blank');
+                newWindow.document.write(htmlContent);
+                newWindow.document.close();
+                
+                // Reset button state
+                openHtmlBtn.classList.remove('processing');
+                openHtmlBtn.textContent = originalText;
+                
+                showStatus(`Chat opened in new tab with ${chatData.messages.length} filtered messages. Press Ctrl+P or Cmd+P to save as PDF!`, 'success');
+            }, 100);
         }
 
         function downloadAsHtml() {
             console.log('Downloading HTML with', chatData.messages.length, 'messages out of', chatData.allMessages.length, 'total');
-            const senders = [...new Set(chatData.messages.map(m => m.sender))];
-            const currentUser = senders[0];
-
-            // Create full HTML page
-            const htmlContent = generateHtmlContent(currentUser);
-
-            // Create a Blob from the HTML content
-            const blob = new Blob([htmlContent], { type: 'text/html' });
             
-            // Create a download link
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `whatsapp-chat-${new Date().toISOString().split('T')[0]}.html`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Show loading state
+            downloadHtmlBtn.classList.add('processing');
+            const originalText = downloadHtmlBtn.textContent;
+            downloadHtmlBtn.textContent = '⏳ Generating...';
             
-            showStatus(`HTML file downloaded with ${chatData.messages.length} filtered messages!`, 'success');
+            // Use setTimeout to allow UI to update
+            setTimeout(() => {
+                const senders = [...new Set(chatData.messages.map(m => m.sender))];
+                const currentUser = senders[0];
+
+                // Create full HTML page
+                const htmlContent = generateHtmlContent(currentUser);
+
+                // Create a Blob from the HTML content
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                
+                // Create a download link
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `whatsapp-chat-${new Date().toISOString().split('T')[0]}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // Reset button state
+                downloadHtmlBtn.classList.remove('processing');
+                downloadHtmlBtn.textContent = originalText;
+                
+                showStatus(`HTML file downloaded with ${chatData.messages.length} filtered messages!`, 'success');
+            }, 100);
         }
 
         function generateHtmlContent(currentUser) {
@@ -1191,6 +1236,7 @@
             border-radius: 5px;
             margin-bottom: 20px;
             text-align: center;
+            position: relative;
         }
 
         .header h1 {
@@ -1201,6 +1247,17 @@
         .header p {
             font-size: 14px;
             opacity: 0.9;
+        }
+
+        .version {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 11px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 600;
         }
 
         .print-info {
@@ -1286,6 +1343,7 @@
 <body>
     <div class="container">
         <div class="header">
+            <div class="version">v1.0.1</div>
             <h1>WhatsApp Chat Export</h1>
             <p>${chatData.messages.length} messages</p>
         </div>
