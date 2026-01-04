@@ -60,6 +60,8 @@
             transition: all 0.3s ease;
             cursor: pointer;
             background: #f8f9fa;
+            position: relative;
+            z-index: 1;
         }
 
         .upload-box:hover {
@@ -398,6 +400,8 @@
     <div id="pdfContent" class="pdf-content"></div>
 
     <script>
+        console.log('Script loaded!');
+        
         let chatData = {
             messages: [],
             images: {}
@@ -411,6 +415,12 @@
         const loadingText = document.getElementById('loadingText');
         const preview = document.getElementById('preview');
         const chatPreview = document.getElementById('chatPreview');
+        
+        console.log('Elements found:', {
+            uploadBox: !!uploadBox,
+            fileInput: !!fileInput,
+            openHtmlBtn: !!openHtmlBtn
+        });
 
         // Upload box click
         uploadBox.addEventListener('click', () => {
