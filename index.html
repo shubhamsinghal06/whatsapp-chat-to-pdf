@@ -381,6 +381,7 @@
             </div>
 
             <button class="btn" id="openHtmlBtn" disabled>Open as HTML Page (Save as PDF)</button>
+            <button class="btn" id="downloadHtmlBtn" disabled style="margin-left: 10px;">Download HTML File</button>
 
             <div class="status" id="status"></div>
 
@@ -410,6 +411,7 @@
         const uploadBox = document.getElementById('uploadBox');
         const fileInput = document.getElementById('fileInput');
         const openHtmlBtn = document.getElementById('openHtmlBtn');
+        const downloadHtmlBtn = document.getElementById('downloadHtmlBtn');
         const status = document.getElementById('status');
         const loading = document.getElementById('loading');
         const loadingText = document.getElementById('loadingText');
@@ -419,7 +421,8 @@
         console.log('Elements found:', {
             uploadBox: !!uploadBox,
             fileInput: !!fileInput,
-            openHtmlBtn: !!openHtmlBtn
+            openHtmlBtn: !!openHtmlBtn,
+            downloadHtmlBtn: !!downloadHtmlBtn
         });
 
         // Upload box click
@@ -456,6 +459,9 @@
 
         // Open HTML button
         openHtmlBtn.addEventListener('click', openAsHtml);
+
+        // Download HTML button
+        downloadHtmlBtn.addEventListener('click', downloadAsHtml);
 
         async function handleFile(file) {
             if (!file.name.endsWith('.zip')) {
@@ -498,6 +504,7 @@
 
                 showStatus(`Successfully loaded ${chatData.messages.length} messages`, 'success');
                 openHtmlBtn.disabled = false;
+                downloadHtmlBtn.disabled = false;
                 
                 // Show preview
                 renderPreview();
@@ -506,6 +513,7 @@
             } catch (error) {
                 showStatus(`Error: ${error.message}`, 'error');
                 openHtmlBtn.disabled = true;
+                downloadHtmlBtn.disabled = true;
             } finally {
                 loading.style.display = 'none';
             }
@@ -652,7 +660,41 @@
             const currentUser = senders[0];
 
             // Create full HTML page
-            const htmlContent = `
+            const htmlContent = generateHtmlContent(currentUser);
+
+            // Open in new window
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(htmlContent);
+            newWindow.document.close();
+            
+            showStatus('Chat opened in new tab. Press Ctrl+P or Cmd+P to save as PDF!', 'success');
+        }
+
+        function downloadAsHtml() {
+            const senders = [...new Set(chatData.messages.map(m => m.sender))];
+            const currentUser = senders[0];
+
+            // Create full HTML page
+            const htmlContent = generateHtmlContent(currentUser);
+
+            // Create a Blob from the HTML content
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            
+            // Create a download link
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `whatsapp-chat-${new Date().toISOString().split('T')[0]}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showStatus('HTML file downloaded successfully!', 'success');
+        }
+
+        function generateHtmlContent(currentUser) {
+            return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -821,13 +863,6 @@ ${chatData.messages.map(msg => {
     </div>
 </body>
 </html>`;
-
-            // Open in new window
-            const newWindow = window.open('', '_blank');
-            newWindow.document.write(htmlContent);
-            newWindow.document.close();
-            
-            showStatus('Chat opened in new tab. Press Ctrl+P or Cmd+P to save as PDF!', 'success');
         }
 
         function showStatus(message, type) {
