@@ -381,6 +381,7 @@
             </div>
 
             <button class="btn" id="generateBtn" disabled>Generate PDF</button>
+            <button class="btn" id="openHtmlBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin-top: 10px;">Open as HTML (Print to PDF)</button>
 
             <div class="status" id="status"></div>
 
@@ -408,6 +409,7 @@
         const uploadBox = document.getElementById('uploadBox');
         const fileInput = document.getElementById('fileInput');
         const generateBtn = document.getElementById('generateBtn');
+        const openHtmlBtn = document.getElementById('openHtmlBtn');
         const status = document.getElementById('status');
         const loading = document.getElementById('loading');
         const loadingText = document.getElementById('loadingText');
@@ -446,6 +448,9 @@
         // Generate PDF button
         generateBtn.addEventListener('click', generatePDF);
 
+        // Open HTML button
+        openHtmlBtn.addEventListener('click', openAsHtml);
+
         async function handleFile(file) {
             if (!file.name.endsWith('.zip')) {
                 showStatus('Please select a valid ZIP file', 'error');
@@ -481,6 +486,7 @@
 
                 showStatus(`Successfully loaded ${chatData.messages.length} messages`, 'success');
                 generateBtn.disabled = false;
+                openHtmlBtn.disabled = false;
                 
                 // Show preview
                 renderPreview();
@@ -759,6 +765,189 @@
                 generateBtn.classList.remove('loading');
                 generateBtn.textContent = 'Generate PDF';
             }
+        }
+
+        function openAsHtml() {
+            const senders = [...new Set(chatData.messages.map(m => m.sender))];
+            const currentUser = senders[0];
+
+            // Create full HTML page
+            const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Chat Export - ${chatData.messages.length} messages</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #e5ddd5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #e5ddd5;
+        }
+
+        .header {
+            background: #075E54;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .print-info {
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-left: 4px solid #25D366;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            display: flex;
+            clear: both;
+        }
+
+        .message.sent {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 65%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            word-wrap: break-word;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .message.sent .message-content {
+            background: #dcf8c6;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.received .message-content {
+            background: white;
+            border-bottom-left-radius: 2px;
+        }
+
+        .message-sender {
+            font-weight: bold;
+            color: #128C7E;
+            font-size: 13px;
+            margin-bottom: 3px;
+        }
+
+        .message-text {
+            font-size: 14px;
+            color: #303030;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #667781;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .message-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 5px;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            
+            .print-info {
+                display: none;
+            }
+            
+            .container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WhatsApp Chat Export</h1>
+            <p>${chatData.messages.length} messages</p>
+        </div>
+
+        <div class="print-info">
+            <strong>💡 How to save as PDF:</strong><br>
+            Press <kbd>Ctrl+P</kbd> (Windows/Linux) or <kbd>Cmd+P</kbd> (Mac), then choose "Save as PDF" as the printer.
+        </div>
+
+        <div class="messages">
+${chatData.messages.map(msg => {
+    const isSent = msg.sender === currentUser;
+    let messageText = msg.text;
+    let imageHtml = '';
+    
+    // Check for images
+    let imageMatch = messageText.match(/<attached:\\s*([^>]+)>/i) || 
+                    messageText.match(/([^\\s]+\\.(jpg|jpeg|png|gif|webp))/i);
+    
+    if (imageMatch) {
+        const imageName = imageMatch[1];
+        if (chatData.images[imageName]) {
+            imageHtml = `<img class="message-image" src="${chatData.images[imageName]}" alt="Image">`;
+            messageText = messageText.replace(imageMatch[0], '').trim();
+        }
+    }
+
+    return `
+            <div class="message ${isSent ? 'sent' : 'received'}">
+                <div class="message-content">
+                    ${!isSent ? `<div class="message-sender">${msg.sender}</div>` : ''}
+                    ${imageHtml}
+                    ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
+                    <div class="message-time">${msg.timestamp}</div>
+                </div>
+            </div>`;
+}).join('')}
+        </div>
+    </div>
+</body>
+</html>`;
+
+            // Open in new window
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(htmlContent);
+            newWindow.document.close();
+            
+            showStatus('Chat opened in new tab. Press Ctrl+P or Cmd+P to save as PDF!', 'success');
         }
 
         function showStatus(message, type) {
