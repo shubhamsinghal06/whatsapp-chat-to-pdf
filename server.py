@@ -16,6 +16,12 @@ DIRECTORY = Path(__file__).parent
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    # Extra MIME types the stdlib's `mimetypes` doesn't register by default.
+    extensions_map = {
+        **http.server.SimpleHTTPRequestHandler.extensions_map,
+        '.webmanifest': 'application/manifest+json',
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DIRECTORY), **kwargs)
 

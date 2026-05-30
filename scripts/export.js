@@ -342,12 +342,15 @@ function generateHtmlContent(currentUser) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Chat Export - ${chatData.messages.length} messages</title>
+    <link rel="icon" type="image/png" href="${ICON_DATA_URI}">
+    <link rel="apple-touch-icon" href="${ICON_DATA_URI}">
+    <meta name="theme-color" content="#25D366">
     <style>${EXPORT_PAGE_CSS}</style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="version">v1.1.1</div>
+            <div class="version">v1.1.2</div>
             <h1>WhatsApp Chat Export</h1>
             <p>${chatData.messages.length} messages</p>
         </div>
