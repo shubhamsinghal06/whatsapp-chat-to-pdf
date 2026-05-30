@@ -42,3 +42,36 @@ downloadHtmlBtn.addEventListener('click', downloadAsHtml);
 startDateInput.addEventListener('change', updateDateFilter);
 endDateInput.addEventListener('change', updateDateFilter);
 clearFilterBtn.addEventListener('click', clearDateFilter);
+
+// Click-to-expand lightbox for inline images (chat thumbnails + video thumbs).
+// Event delegation keeps this working as the preview re-renders on filter
+// changes without re-binding individual handlers.
+(function setupLightbox() {
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
+    if (!lightbox || !lightboxImg) return;
+
+    const close = () => {
+        lightbox.classList.remove('open');
+        lightboxImg.src = '';
+    };
+
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target && target.classList && target.classList.contains('message-image')) {
+            lightboxImg.src = target.src;
+            lightbox.classList.add('open');
+            return;
+        }
+        // Click on overlay or close button closes the lightbox. Clicks on the
+        // image itself bubble to the overlay too, so closing on overlay click
+        // also closes when clicking outside the rendered image area.
+        if (target === lightbox || (target && target.id === 'lightboxClose')) {
+            close();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lightbox.classList.contains('open')) close();
+    });
+})();

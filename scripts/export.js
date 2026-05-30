@@ -53,15 +53,6 @@ const EXPORT_PAGE_CSS = `
             font-weight: 600;
         }
 
-        .print-info {
-            background: #fff;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            text-align: center;
-            border-left: 4px solid #25D366;
-        }
-
         .message {
             margin-bottom: 12px;
             display: flex;
@@ -169,18 +160,59 @@ const EXPORT_PAGE_CSS = `
         }
 
         .message-image {
-            max-width: 100%;
+            max-width: 280px;
+            max-height: 360px;
+            width: auto;
+            height: auto;
             border-radius: 8px;
             margin-top: 5px;
+            cursor: zoom-in;
+            display: block;
+            object-fit: cover;
+        }
+
+        /* Click-to-expand lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out;
+            padding: 40px;
+            user-select: none;
+        }
+
+        .lightbox.open {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+            border-radius: 4px;
+        }
+
+        .lightbox-close {
+            position: fixed;
+            top: 16px;
+            right: 24px;
+            color: white;
+            font-size: 36px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            line-height: 1;
+            z-index: 10001;
         }
 
         @media print {
             body {
                 background: white;
-            }
-
-            .print-info {
-                display: none;
             }
 
             .container {
@@ -198,8 +230,7 @@ function openAsHtml() {
 
     // setTimeout lets the button-state update paint before the heavy template work.
     setTimeout(() => {
-        const senders = [...new Set(chatData.messages.map(m => m.sender))];
-        const currentUser = senders[0];
+        const currentUser = inferCurrentUser(chatData.messages);
 
         const htmlContent = generateHtmlContent(currentUser);
 
@@ -222,8 +253,7 @@ function downloadAsHtml() {
     downloadHtmlBtn.textContent = '⏳ Generating...';
 
     setTimeout(() => {
-        const senders = [...new Set(chatData.messages.map(m => m.sender))];
-        const currentUser = senders[0];
+        const currentUser = inferCurrentUser(chatData.messages);
 
         const htmlContent = generateHtmlContent(currentUser);
 
@@ -317,20 +347,47 @@ function generateHtmlContent(currentUser) {
 <body>
     <div class="container">
         <div class="header">
-            <div class="version">v1.1.0</div>
+            <div class="version">v1.1.1</div>
             <h1>WhatsApp Chat Export</h1>
             <p>${chatData.messages.length} messages</p>
-        </div>
-
-        <div class="print-info">
-            <strong>📄 To Save as PDF:</strong><br>
-            Click the <strong>Print</strong> button in your browser menu, then select <strong>"Save as PDF"</strong> as your destination.
         </div>
 
         <div class="messages">
 ${messagesHtml}
         </div>
     </div>
+
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Expanded image">
+        <button type="button" class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
+        <img id="lightboxImg" alt="">
+    </div>
+
+    <script>
+        (function () {
+            var lightbox = document.getElementById('lightbox');
+            var lightboxImg = document.getElementById('lightboxImg');
+            if (!lightbox || !lightboxImg) return;
+
+            function close() {
+                lightbox.classList.remove('open');
+                lightboxImg.src = '';
+            }
+
+            document.addEventListener('click', function (e) {
+                var t = e.target;
+                if (t && t.classList && t.classList.contains('message-image')) {
+                    lightboxImg.src = t.src;
+                    lightbox.classList.add('open');
+                    return;
+                }
+                if (t === lightbox || (t && t.id === 'lightboxClose')) close();
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && lightbox.classList.contains('open')) close();
+            });
+        })();
+    </script>
 </body>
 </html>`;
 }

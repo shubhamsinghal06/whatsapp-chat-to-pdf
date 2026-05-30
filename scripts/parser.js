@@ -90,6 +90,17 @@ function parseWhatsAppChat(text) {
     }).filter(msg => msg.text || msg.text === '');
 }
 
+// Returns the first non-system, non-null sender in a message list — used to
+// decide which side of the chat is "you". Naive but matches prior behaviour;
+// crucially skips system tiles whose sender is null (which would otherwise
+// poison the lookup and make every real message render as received).
+function inferCurrentUser(messages) {
+    for (const msg of messages) {
+        if (!msg.isSystem && msg.sender) return msg.sender;
+    }
+    return null;
+}
+
 // Looks at a system-message text and classifies it as a call entry if it
 // matches typical WhatsApp call notices like:
 //   "Voice call, 5 min"

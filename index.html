@@ -10,7 +10,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="version">v1.1.0</div>
+            <div class="version">v1.1.1</div>
             <h1>📱 WhatsApp Chat to PDF</h1>
             <p>Convert your WhatsApp chat exports into beautiful PDF documents</p>
         </div>
@@ -60,6 +60,12 @@
 
     <!-- Hidden container for PDF generation -->
     <div id="pdfContent" class="pdf-content"></div>
+
+    <!-- Click-to-expand image lightbox -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Expanded image">
+        <button type="button" class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
+        <img id="lightboxImg" alt="">
+    </div>
 
     <!--
         Classic scripts (not ES modules) so the page also works when opened

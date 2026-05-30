@@ -5,8 +5,7 @@ function renderPreview() {
     // Show the LAST 50 messages of the (filtered) set in chronological order,
     // so the most recent message is at the bottom — natural chat-view flow.
     const previewMessages = chatData.messages.slice(-50);
-    const senders = [...new Set(chatData.messages.map(m => m.sender))];
-    const currentUser = senders[0]; // assume first sender is the current user
+    const currentUser = inferCurrentUser(chatData.messages);
 
     previewMessages.forEach(msg => {
         chatPreview.appendChild(createPreviewMessage(msg, currentUser));

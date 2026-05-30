@@ -394,9 +394,15 @@ body {
 }
 
 .message-image {
-    max-width: 100%;
+    max-width: 280px;
+    max-height: 360px;
+    width: auto;
+    height: auto;
     border-radius: 8px;
     margin-top: 5px;
+    cursor: zoom-in;
+    display: block;
+    object-fit: cover;
 }
 
 .message-video {
@@ -407,6 +413,45 @@ body {
 
 .message-video:hover {
     opacity: 0.9;
+}
+
+/* Click-to-expand lightbox (used by both preview and exported HTML) */
+.lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    padding: 40px;
+    user-select: none;
+}
+
+.lightbox.open {
+    display: flex;
+}
+
+.lightbox img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+    border-radius: 4px;
+}
+
+.lightbox-close {
+    position: fixed;
+    top: 16px;
+    right: 24px;
+    color: white;
+    font-size: 36px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    z-index: 10001;
 }
 
 .loading {
